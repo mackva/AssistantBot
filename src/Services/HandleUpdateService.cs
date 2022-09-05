@@ -87,16 +87,16 @@ public class HandleUpdateService
                 {
                     await bot.PinChatMessageAsync(message.Chat.Id, message.ReplyToMessage.MessageId, false);
                     var link = message.Chat.Type == ChatType.Private ? "the message" : $"[this message](http://t.me/c/{-(message.Chat.Id + 1000000000000)}/{message.ReplyToMessage.MessageId})";
-                    return await bot.SendTextMessageAsync(message.Chat.Id, $"I have pinned {link}.", ParseMode.Markdown);
+                    return await bot.SendTextMessageAsync(message.Chat.Id, $"I have pinned {link}.", ParseMode.Markdown, replyToMessageId: message.MessageId);
                 }
                 catch(ApiRequestException ex) when (ex.ErrorCode == 400)
                 {
-                    return await bot.SendTextMessageAsync(message.Chat.Id, "Looks like I dont have permission to pin messages. Could you please promote me?");
+                    return await bot.SendTextMessageAsync(message.Chat.Id, "Looks like I dont have permission to pin messages. Could you please promote me?", replyToMessageId: message.MessageId);
                 }
             } 
             else
             {
-                return await bot.SendTextMessageAsync(message.Chat.Id, "You need to reply to a message to pin it!");
+                return await bot.SendTextMessageAsync(message.Chat.Id, "You need to reply to a message to pin it!", replyToMessageId: message.MessageId);
             }
         }
 
@@ -105,7 +105,7 @@ public class HandleUpdateService
             var usage = "Usage:\n" +
                         "/pin@" + botName + "   - Pin the message you replied to.\n";
 
-            return await bot.SendTextMessageAsync(message.Chat.Id, usage, replyMarkup: new ReplyKeyboardRemove());
+            return await bot.SendTextMessageAsync(message.Chat.Id, usage, replyMarkup: new ReplyKeyboardRemove(), replyToMessageId: message.MessageId);
         }
     }
 
