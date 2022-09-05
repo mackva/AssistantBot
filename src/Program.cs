@@ -30,6 +30,16 @@ builder.Services.AddScoped<HandleUpdateService>();
 //   https://docs.microsoft.com/en-us/aspnet/core/web-api/advanced/formatting?view=aspnetcore-6.0#add-newtonsoftjson-based-json-format-support
 builder.Services.AddControllers().AddNewtonsoftJson();
 
+// For running in Railway
+var portVar = Environment.GetEnvironmentVariable("PORT");
+if (portVar is { Length: > 0 } && int.TryParse(portVar, out int port))
+{
+    builder.WebHost.ConfigureKestrel(serverOptions =>
+    {
+        serverOptions.ListenAnyIP(port);
+    });
+}
+
 var app = builder.Build();
 
 app.UseRouting();
