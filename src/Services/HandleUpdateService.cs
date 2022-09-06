@@ -52,13 +52,14 @@ public class HandleUpdateService
             return;
         }
 
+        _logger.LogInformation("Receive message text: {message}", message.Text);
+
         if (!message.Text!.Contains($"@{_botName}", StringComparison.InvariantCultureIgnoreCase))
         {
             return;
         }
 
         var command = message.Text!.Split(" ")[0];
-
 
         Message sentMessage = null;
         if (command.Equals($"/pin@{_botName}", StringComparison.InvariantCultureIgnoreCase))
