@@ -9,7 +9,8 @@ public class HandleUpdateService
 {
     private readonly ITelegramBotClient _botClient;
     private readonly ILogger<HandleUpdateService> _logger;
-    private readonly string  _botName;
+    private readonly string _botName;
+    private const bool _silentMode = true; //TODO Use internal state
 
     public HandleUpdateService(ITelegramBotClient botClient, ILogger<HandleUpdateService> logger)
     {
@@ -28,18 +29,18 @@ public class HandleUpdateService
             // UpdateType.ShippingQuery:
             // UpdateType.PreCheckoutQuery:
             // UpdateType.Poll:
-            UpdateType.Message            => BotOnMessageReceived(update.Message!),
-            UpdateType.EditedMessage      => BotOnMessageReceived(update.EditedMessage!),
-            _                             => UnknownUpdateHandlerAsync(update)
+            UpdateType.Message => BotOnMessageReceived(update.Message!),
+            UpdateType.EditedMessage => BotOnMessageReceived(update.EditedMessage!),
+            _ => UnknownUpdateHandlerAsync(update)
         };
 
         try
         {
             await handler;
         }
-        #pragma warning disable CA1031
+#pragma warning disable CA1031
         catch (Exception exception)
-        #pragma warning restore CA1031
+#pragma warning restore CA1031
         {
             await HandleErrorAsync(exception);
         }
@@ -61,24 +62,20 @@ public class HandleUpdateService
 
         var command = message.Text!.Split(" ")[0];
 
-        Message sentMessage = null;
         if (command.Equals($"/pin@{_botName}", StringComparison.InvariantCultureIgnoreCase))
         {
-            sentMessage = await PinMessage(_botClient, message);
+            await PinMessage(_botClient, message, _silentMode);
         }
         else if (command.Equals($"/help@{_botName}", StringComparison.InvariantCultureIgnoreCase))
         {
-            sentMessage = await Usage(_botClient, message, _botName);
-        } 
+            await Usage(_botClient, message, _botName);
+        }
         else
         {
             return;
         }
 
-
-        _logger.LogInformation("The message was sent with id: {SentMessageId}", sentMessage?.MessageId);
-
-        static async Task<Message> PinMessage(ITelegramBotClient bot, Message message)
+        static async Task PinMessage(ITelegramBotClient bot, Message message, bool silentMode)
         {
             await bot.SendChatActionAsync(message.Chat.Id, ChatAction.Typing);
 
@@ -87,18 +84,18 @@ public class HandleUpdateService
                 try
                 {
                     await bot.PinChatMessageAsync(message.Chat.Id, message.ReplyToMessage.MessageId, false);
-                    var link = message.Chat.Type == ChatType.Private ? "the message" : $"[this message](http://t.me/c/{-(message.Chat.Id + 1000000000000)}/{message.ReplyToMessage.MessageId})";
-                    return await bot.SendTextMessageAsync(message.Chat.Id, $"I have pinned {link}.", ParseMode.Markdown, replyToMessageId: message.MessageId);
                 }
-                catch(ApiRequestException ex) when (ex.ErrorCode == 400)
+                catch (ApiRequestException ex) when (ex.ErrorCode == 400)
                 {
-                    return await bot.SendTextMessageAsync(message.Chat.Id, "Looks like I dont have permission to pin messages. Could you please promote me?", replyToMessageId: message.MessageId);
+                    await SendTextMessageAsync(bot, message.Chat.Id, "Looks like I dont have permission to pin messages. Could you please promote me?", silentMode, replyToMessageId: message.MessageId);
                 }
-            } 
+            }
             else
             {
-                return await bot.SendTextMessageAsync(message.Chat.Id, "You need to reply to a message to pin it!", replyToMessageId: message.MessageId);
+                await SendTextMessageAsync(bot, message.Chat.Id, "You need to reply to a message to pin it!", silentMode, replyToMessageId: message.MessageId);
             }
+
+            await DeleteMessageAsync(bot, message.Chat.Id, message.MessageId, silentMode);
         }
 
         static async Task<Message> Usage(ITelegramBotClient bot, Message message, string botName)
@@ -107,6 +104,26 @@ public class HandleUpdateService
                         "/pin@" + botName + "   - Pin the message you replied to.\n";
 
             return await bot.SendTextMessageAsync(message.Chat.Id, usage, replyMarkup: new ReplyKeyboardRemove(), replyToMessageId: message.MessageId);
+        }
+    }
+
+    private static async Task DeleteMessageAsync(ITelegramBotClient bot, long chatId, int messageId, bool silentMode)
+    {
+        try
+        {
+            await bot.DeleteMessageAsync(chatId, messageId);
+        }
+        catch (ApiRequestException ex) when (ex.ErrorCode == 400)
+        {
+            await SendTextMessageAsync(bot, chatId, "Looks like I dont have permission to delete messages. Could you please promote me?", silentMode, replyToMessageId: messageId);
+        }
+    }
+
+    private static async Task SendTextMessageAsync(ITelegramBotClient bot, long chatId, string text, bool silentMode, int? replyToMessageId = null)
+    {
+        if (!silentMode)
+        {
+            await bot.SendTextMessageAsync(chatId, text, replyToMessageId: replyToMessageId);
         }
     }
 
