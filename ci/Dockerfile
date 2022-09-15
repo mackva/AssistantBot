@@ -1,10 +1,9 @@
-FROM mcr.microsoft.com/dotnet/runtime-deps:6.0-alpine-amd64
+FROM mcr.microsoft.com/dotnet/aspnet:6.0
+EXPOSE 80
 
-EXPOSE 8443
+ENV PORT 80
 
 RUN mkdir /app
 WORKDIR /app
-COPY ./linux64_musl/. ./
-
-RUN chmod +x ./Telegram.Bot.Examples.WebHook.dll
-CMD ["./Telegram.Bot.Examples.WebHook.dll", "--urls", "http://0.0.0.0:8443"]
+COPY . .
+ENTRYPOINT ["dotnet", "Telegram.Bot.Examples.WebHook.dll"]
