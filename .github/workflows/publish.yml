@@ -22,11 +22,11 @@ jobs:
     - name: Test
       run: dotnet test --no-restore --verbosity normal
     - name: Publish     
-      run: dotnet publish --no-restore --output "..\linux64_musl"
+      run: dotnet publish --no-restore --output "linux64_musl"
     - name: Copy dockerfile 
-      run: mv ci/Dockerfile ../linux64_musl/Dockerfile
+      run: mv ci/Dockerfile linux64_musl/Dockerfile
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v2
       with:
         name: Application_Artifact
-        path: ${{github.workspace}}/../linux64_musl
+        path: ${{github.workspace}}/linux64_musl
