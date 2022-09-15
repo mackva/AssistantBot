@@ -22,7 +22,7 @@ jobs:
     - name: Test
       run: dotnet test --no-restore --verbosity normal
     - name: Publish     
-      run: dotnet publish -r linux-musl-x64 --no-restore --output "..\linux64_musl" --self-contained true -p:PublishTrimmed=true
+      run: dotnet publish --no-restore --output "..\linux64_musl"
     - name: Copy dockerfile 
       run: mv ci/Dockerfile ../linux64_musl/Dockerfile
     - name: Upload Build Artifact
