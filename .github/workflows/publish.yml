@@ -49,6 +49,7 @@ jobs:
         context: ${{github.workspace}}/linux64_musl
         # Note: tags has to be all lower-case
         tags: ${{ secrets.DOCKER_HUB_USERNAME }}/assistantbot:latest
+        push: true
 
     - name: Image digest
       run: echo ${{ steps.docker_build.outputs.digest }}
