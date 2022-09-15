@@ -23,6 +23,7 @@ jobs:
       run: dotnet test --no-restore --verbosity normal
     - name: Publish     
       run: dotnet publish -r linux-musl-x64 --no-restore --output "..\linux64_musl" -p:PublishTrimmed=true
+    - name: Copy dockerfile 
       run: mv ci/Dockerfile ../linux64_musl/Dockerfile
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v2
