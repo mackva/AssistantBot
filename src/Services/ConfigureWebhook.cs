@@ -10,11 +10,11 @@ public class ConfigureWebhook : IHostedService
 
     public ConfigureWebhook(ILogger<ConfigureWebhook> logger,
                             IServiceProvider serviceProvider,
-                            IConfiguration configuration)
+                            BotConfiguration botConfiguration)
     {
         _logger = logger;
         _services = serviceProvider;
-        _botConfig = configuration.GetSection("BotConfiguration").Get<BotConfiguration>();
+        _botConfig = botConfiguration;
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
