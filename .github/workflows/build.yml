@@ -3,9 +3,9 @@ name: Build and test
 on:
   workflow_dispatch:
   push:
-    branches: [ master, testAction ]
+    branches: [ 'feature/**' ]
   pull_request:
-    branches: [ master, testAction ]
+    branches: [ master ]
 
 jobs:
   build:
