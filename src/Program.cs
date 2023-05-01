@@ -1,23 +1,26 @@
-using Microsoft.Extensions.DependencyInjection;
-using System;
 using Telegram.Bot;
-using Telegram.Bot.Examples.WebHook;
 using Telegram.Bot.Examples.WebHook.Services;
+using Telegram.Bot.Examples.WebHook;
+
+
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddHealthChecks();
 
-var botToken = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("BotToken")) ? Environment.GetEnvironmentVariable("BotToken") : builder.Configuration["BotConfiguration:BotToken"];
-var hostAddress = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("HostAddress")) ? Environment.GetEnvironmentVariable("HostAddress") : builder.Configuration["BotConfiguration:HostAddress"];
+builder.Services.Configure<GStorageConfiguration>(builder.Configuration.GetSection(GStorageConfiguration.Key));
+builder.Services.AddSingleton<IGStorage, GStorage>();
+builder.Services.AddSingleton<IDistributedStorage, DistributedStorage>();
 
-builder.Services.AddHostedService<ConfigureWebhook>(serviceProvider => new ConfigureWebhook(
-            serviceProvider.GetService<ILogger<ConfigureWebhook>>(),
-            serviceProvider.GetService<IServiceProvider>(),
-            new BotConfiguration { BotToken = botToken, HostAddress = hostAddress }));
+
+var botConfigSection = builder.Configuration.GetSection(BotConfiguration.Key);
+builder.Services.Configure<BotConfiguration>(botConfigSection);
+var botConfig = botConfigSection.Get<BotConfiguration>();
+builder.Services.AddHostedService<ConfigureWebhook>();
+
 
 builder.Services.AddHttpClient("tgwebhook")
-    .AddTypedClient<ITelegramBotClient>(httpClient => new TelegramBotClient(botToken, httpClient));
+    .AddTypedClient<ITelegramBotClient>(httpClient => new TelegramBotClient(botConfig.BotToken, httpClient));
 builder.Services.AddScoped<HandleUpdateService>();
 builder.Services.AddControllers().AddNewtonsoftJson();
 
@@ -32,6 +35,8 @@ if (portVar is { Length: > 0 } && int.TryParse(portVar, out int port))
 }
 
 var app = builder.Build();
+await app.Services.GetRequiredService<IGStorage>().InitAsync();
+
 
 app.UseRouting();
 app.UseCors();
@@ -40,7 +45,7 @@ app.MapHealthChecks("/health");
 app.UseEndpoints(endpoints =>
 {
     endpoints.MapControllerRoute(name: "tgwebhook",
-                                 pattern: $"bot/{botToken}",
+                                 pattern: $"bot/{botConfig.BotToken}",
                                  new { controller = "Webhook", action = "Post" });
     endpoints.MapControllers();
 });
