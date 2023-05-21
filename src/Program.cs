@@ -1,15 +1,14 @@
 using Telegram.Bot;
-using Telegram.Bot.Examples.WebHook.Services;
 using Telegram.Bot.Examples.WebHook;
-
-
+using Telegram.Bot.Examples.WebHook.Services;
+using Telegram.Bot.Examples.WebHook.Services.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddHealthChecks();
 
 builder.Services.Configure<GStorageConfiguration>(builder.Configuration.GetSection(GStorageConfiguration.Key));
-builder.Services.AddSingleton<IGStorage, GStorage>();
+builder.Services.AddSingleton<IGStorageSessionFactory, GStorageSessionFactory>();
 builder.Services.AddSingleton<IDistributedStorage, DistributedStorage>();
 
 
@@ -35,8 +34,12 @@ if (portVar is { Length: > 0 } && int.TryParse(portVar, out int port))
 }
 
 var app = builder.Build();
-await app.Services.GetRequiredService<IGStorage>().InitAsync();
 
+var sessionFactory = app.Services.GetRequiredService<IGStorageSessionFactory>();
+using (var session = sessionFactory.OpenSession())
+{
+   await session.InitAsync();
+}
 
 app.UseRouting();
 app.UseCors();

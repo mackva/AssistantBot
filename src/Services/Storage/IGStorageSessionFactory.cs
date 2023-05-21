@@ -1,18 +1,10 @@
-﻿namespace Telegram.Bot.Examples.WebHook.Services
+﻿namespace Telegram.Bot.Examples.WebHook.Services.Storage
 {
-    /// <summary>
-    /// Provides methods to store and access data on disk with optional expiration
-    /// </summary>
-    public interface IGStorage
+    public interface IGStorageSessionFactory
     {
-        public Task InitAsync(CancellationToken token = default);
-        public Task CreateFileAsync(string name, Stream data, CancellationToken token = default);
-        public Task UpdateFileAsync(string name, Stream data, CancellationToken token = default);
-        public Task DownloadFileAsync(string name, Stream data, CancellationToken token = default);
-        public Task<bool> Exists(string name, CancellationToken token = default);
-        public Task<IEnumerable<string>> GetFileIdsAsync(CancellationToken token = default);
-        public Task DeleteAsync(string name, CancellationToken token = default);
+        public IGStorageSession OpenSession();
     }
+
     public class FailedOperationException : Exception
     {
         public FailedOperationException() : base() { }
