@@ -36,9 +36,9 @@ if (portVar is { Length: > 0 } && int.TryParse(portVar, out int port))
 var app = builder.Build();
 
 var sessionFactory = app.Services.GetRequiredService<IGStorageSessionFactory>();
-using (var session = sessionFactory.OpenSession())
+if (sessionFactory is GStorageSessionFactory gStorageSessionFactory)
 {
-   await session.InitAsync();
+    await gStorageSessionFactory.InitAsync();
 }
 
 app.UseRouting();

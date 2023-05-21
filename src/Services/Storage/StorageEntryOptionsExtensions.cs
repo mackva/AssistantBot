@@ -17,13 +17,16 @@
             return properties;
         }
 
-        public static bool IsExpired(DateTime modifiedTime, IDictionary<string, string> properties)
+        public static bool IsExpired(DateTime? modifiedTime, IDictionary<string, string> properties)
         {
+            if (properties == null)
+                return false;
+
             if (properties.ContainsKey(AbsoluteExpirationKey) && DateTimeOffset.UtcNow > DateTimeOffset.Parse(properties[AbsoluteExpirationKey]))
                 return true;
 
-            if (properties.ContainsKey(SlidingExpirationKey))
-                return DateTime.UtcNow > modifiedTime + TimeSpan.Parse(properties[SlidingExpirationKey]);
+            if (properties.ContainsKey(SlidingExpirationKey) && modifiedTime.HasValue)
+                return DateTime.Now > modifiedTime + TimeSpan.Parse(properties[SlidingExpirationKey]);
 
             return false;
         }

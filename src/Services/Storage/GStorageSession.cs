@@ -12,31 +12,33 @@ namespace Telegram.Bot.Examples.WebHook.Services.Storage
         private readonly GStorageConfiguration _options;
         private readonly ILogger _logger;
 
-        private string _folderId;
+        private readonly string _folderId;
 
-        public GStorageSession(DriveService driveService, GStorageConfiguration options, ILogger logger)
+        public GStorageSession(DriveService driveService, string folderId, GStorageConfiguration options, ILogger logger)
         {
             _driveService = driveService;
+            _folderId = folderId;
             _logger = logger;
             _options = options;
         }
 
-        public async Task InitAsync(CancellationToken token = default)
+        public static async Task<string> InitAsync(DriveService driveService, GStorageConfiguration options, CancellationToken token = default)
         {
-            var folders = await GetResourcesAsync(_driveService, "mimeType='application/vnd.google-apps.folder' and 'root' in parents", false, token);
-            var storageFolder = folders.Where(folder => folder.Name == _options.StorageName).FirstOrDefault();
+            var folders = await GetResourcesAsync(driveService, "mimeType='application/vnd.google-apps.folder' and 'root' in parents", false, token);
+            var storageFolder = folders.Where(folder => folder.Name == options.StorageName).FirstOrDefault();
             if (storageFolder != null)
             {
-                _folderId = storageFolder.Id;
+                return storageFolder.Id;
             }
             else
             {
-                var folderId = await CreateFolderAsync(_driveService, _options.StorageName, token: token);
-                _folderId = folderId;
-                if (!string.IsNullOrEmpty(_options.ShareTo))
+                var folderId = await CreateFolderAsync(driveService, options.StorageName, token: token);
+                if (!string.IsNullOrEmpty(options.ShareTo))
                 {
-                    await ShareAsync(_driveService, folderId, _options.ShareTo, token);
+                    await ShareAsync(driveService, folderId, options.ShareTo, token);
                 }
+
+                return folderId;
             }
         }
 
@@ -83,13 +85,6 @@ namespace Telegram.Bot.Examples.WebHook.Services.Storage
 
             await DownloadFileAsync(_driveService, file.Id, data, token);
         }
-
-        public async Task<IEnumerable<string>> GetFileIdsAsync(CancellationToken token = default)
-        {
-            var filses = await GetResourcesAsync(_driveService, $"mimeType!='application/vnd.google-apps.folder' and '{_folderId}' in parents", false, token);
-            return filses.Select(f => f.Id).ToList();
-        }
-
         public async Task DeleteAsync(string name, CancellationToken token = default)
         {
             if (string.IsNullOrEmpty(name))
@@ -126,6 +121,20 @@ namespace Telegram.Bot.Examples.WebHook.Services.Storage
             catch
             {
                 _logger.LogWarning($"Failed disposing drive service {this._folderId}");
+            }
+        }
+
+        public async Task<IEnumerable<string>> GetFileIdsAsync(CancellationToken token = default)
+        {
+            var filses = await GetResourcesAsync(_driveService, $"mimeType!='application/vnd.google-apps.folder' and '{_folderId}' in parents", false, token);
+            return filses.Select(f => f.Id).ToList();
+        }
+        public async Task CleanupStorageAsync(CancellationToken token = default)
+        {
+            var expiredFilses = await GetResourcesAsync(_driveService, $"mimeType!='application/vnd.google-apps.folder' and '{_folderId}' in parents", true, token);
+            foreach (var expiredFilse in expiredFilses)
+            {
+                await DeleteAsync(_driveService, expiredFilse.Id, token);
             }
         }
 
@@ -210,7 +219,7 @@ namespace Telegram.Bot.Examples.WebHook.Services.Storage
             return file.Id;
         }
 
-        private async Task ShareAsync(DriveService service, string fileId, string emailAddress, CancellationToken token)
+        private static async Task ShareAsync(DriveService service, string fileId, string emailAddress, CancellationToken token)
         {
             Permission userPermission = new Permission()
             {
@@ -226,9 +235,8 @@ namespace Telegram.Bot.Examples.WebHook.Services.Storage
                 request.SupportsAllDrives = true;
                 var file = await request.ExecuteAsync(token);
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                _logger.LogError("An error occurred: " + e.Message);
             }
         }
 
@@ -239,13 +247,13 @@ namespace Telegram.Bot.Examples.WebHook.Services.Storage
             fileList.Fields = "nextPageToken, files(*)";
 
             var result = new List<Google.Apis.Drive.v3.Data.File>();
-            string pageToken = null;
+            string pageToken = string.Empty;
             do
             {
                 fileList.PageToken = pageToken;
                 var filesResult = await fileList.ExecuteAsync(token);
                 var files = filesResult.Files
-                    .Where(f => expired == StorageEntryOptionsExtensions.IsExpired(f.ModifiedTime.Value, f.Properties))
+                    .Where(f => expired == StorageEntryOptionsExtensions.IsExpired(f.ModifiedTime, f.Properties))
                     .ToList();
 
 
